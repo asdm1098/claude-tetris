@@ -270,6 +270,8 @@ kbd {
   gap: 8px;
 }
 
+.pause-hint { font-size: 10px; color: var(--muted); }
+
 .pause-level select {
   background: var(--panel);
   color: var(--text);
