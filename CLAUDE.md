@@ -21,3 +21,4 @@ Three files, all logic in `game.js` (single script, global state, no modules):
 - Canvas size is hardcoded in `index.html` (`300×600` = `COLS×BLOCK` × `ROWS×BLOCK`); changing `COLS`/`ROWS`/`BLOCK` requires updating it. `next-canvas` is 120×120 (4×4 cells at 30px).
 - Rotation: `rotateCW` + simple horizontal kick list `[0,-1,1,-2,2]` in `tryRotate` (not SRS).
 - Scoring: `LINE_SCORES × level`; soft drop +1/cell, hard drop +2/cell. Level = `floor(lines/10)+1`; `dropInterval = max(100, 1000-(level-1)*90)`.
+- Skins (`// ---- Skins ----` in `game.js`): `SKINS = {retro, neon, pastel, pixel}`, each `{colors, boardBg, grid, drawBlock(ctx,x,y,color,size)}`; global `drawBlock` dispatches to active skin. `<select id="skin-select">` (options built from `SKINS`), persisted in `localStorage['tetris-skin']`, `applySkin()` redraws. `boardBg`/`grid` null = use theme CSS. Retro keeps light/dark palettes; other skins have fixed palettes.
