@@ -20,4 +20,5 @@ Three files, all logic in `game.js` (single script, global state, no modules):
 - Piece lifecycle: `lockPiece()` = `merge()` → `clearLines()` → `spawn()`. `spawn()` calls `endGame()` if the new piece collides.
 - Canvas size is hardcoded in `index.html` (`300×600` = `COLS×BLOCK` × `ROWS×BLOCK`); changing `COLS`/`ROWS`/`BLOCK` requires updating it. `next-canvas` is 120×120 (4×4 cells at 30px).
 - Rotation: `rotateCW` + simple horizontal kick list `[0,-1,1,-2,2]` in `tryRotate` (not SRS).
-- Scoring: `LINE_SCORES × level`; soft drop +1/cell, hard drop +2/cell. Level = `floor(lines/10)+1`; `dropInterval = max(100, 1000-(level-1)*90)`.
+- Pause (`// ---- Pausa ----` in `game.js`): `P`/`Escape` toggles `#pause-menu` (ids `pause-*`: Reanudar/Reiniciar/Ver controles/Nivel inicial 1–10); `paused` blocks game keys. `startLevel` seeds `level`/`dropInterval` in `init()`.
+- Scoring: `LINE_SCORES × level`; soft drop +1/cell, hard drop +2/cell. Level = `startLevel+floor(lines/10)`; `dropInterval = max(100, 1000-(level-1)*90)`.

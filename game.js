@@ -55,6 +55,7 @@ const themeBtn = document.getElementById('theme-toggle');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let theme = 'dark', gridColor;
+let startLevel = 1;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -120,7 +121,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = startLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -254,20 +255,6 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
-function togglePause() {
-  if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
-  }
-}
-
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
@@ -288,22 +275,23 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  hidePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (e.code === 'KeyT') { toggleTheme(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -329,6 +317,53 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+// ---- Pausa ----
+const pauseMenu = document.getElementById('pause-menu');
+const pauseResumeBtn = document.getElementById('pause-resume');
+const pauseRestartBtn = document.getElementById('pause-restart');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseControlsList = document.getElementById('pause-controls');
+const pauseLevelSel = document.getElementById('pause-level');
+
+for (let i = 1; i <= 10; i++) pauseLevelSel.add(new Option(i, i));
+pauseLevelSel.value = startLevel;
+
+function hidePauseMenu() {
+  pauseMenu.classList.add('hidden');
+  pauseControlsList.classList.add('hidden');
+  pauseControlsBtn.setAttribute('aria-expanded', 'false');
+}
+
+// Con el menu abierto, `paused` bloquea los inputs del juego (ver keydown)
+function togglePause() {
+  if (gameOver) return;
+  paused = !paused;
+  if (!paused) {
+    hidePauseMenu();
+    if (document.activeElement) document.activeElement.blur();
+    lastTime = performance.now();
+    dropAccum = 0;
+    animId = requestAnimationFrame(loop);
+  } else {
+    cancelAnimationFrame(animId);
+    pauseMenu.classList.remove('hidden');
+    pauseResumeBtn.focus();
+  }
+}
+
+pauseResumeBtn.addEventListener('click', togglePause);
+pauseRestartBtn.addEventListener('click', () => {
+  pauseRestartBtn.blur();
+  init();
+});
+pauseControlsBtn.addEventListener('click', () => {
+  const hidden = pauseControlsList.classList.toggle('hidden');
+  pauseControlsBtn.setAttribute('aria-expanded', String(!hidden));
+});
+pauseLevelSel.addEventListener('change', () => {
+  startLevel = parseInt(pauseLevelSel.value, 10) || 1;
+});
 themeBtn.addEventListener('click', () => {
   toggleTheme();
   themeBtn.blur(); // evita que Space (caída) active el botón
