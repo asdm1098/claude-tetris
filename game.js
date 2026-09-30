@@ -13,18 +13,7 @@ const COLORS = [
   '#e57373', // Z - red
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
-];
-
-// Paleta con más contraste para el tema claro
-const COLORS_LIGHT = [
-  null,
-  '#00acc1', // I
-  '#f9a825', // O
-  '#8e24aa', // T
-  '#43a047', // S
-  '#e53935', // Z
-  '#1e88e5', // J
-  '#fb8c00', // L
+  '#9e9e9e', // N - tuerca (gris metálico)
 ];
 
 const PIECES = [
@@ -36,6 +25,7 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8,8,8],[8,0,8],[8,8,8]],                  // N (tuerca)
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
@@ -51,17 +41,15 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
-const themeBtn = document.getElementById('theme-toggle');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
-let theme = 'dark', gridColor;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
 function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+  const type = Math.floor(Math.random() * 8) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -172,7 +160,7 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = (theme === 'light' ? COLORS_LIGHT : COLORS)[colorIndex];
+  const color = COLORS[colorIndex];
   context.globalAlpha = alpha ?? 1;
   context.fillStyle = color;
   context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
@@ -183,7 +171,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = gridColor;
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid-line').trim();
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -232,20 +220,6 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
-function applyTheme(t) {
-  theme = t;
-  document.documentElement.dataset.theme = t;
-  themeBtn.textContent = t === 'light' ? '☾' : '☀';
-  gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
-  try { localStorage.setItem('theme', t); } catch (e) {}
-  // el loop puede estar detenido (pausa / game over): repintar manualmente
-  if (current && next) { draw(); drawNext(); }
-}
-
-function toggleTheme() {
-  applyTheme(theme === 'light' ? 'dark' : 'light');
-}
-
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
@@ -280,6 +254,7 @@ function loop(ts) {
       lockPiece();
     }
   }
+  if (gameOver) return;
   draw();
   animId = requestAnimationFrame(loop);
 }
@@ -304,7 +279,6 @@ function init() {
 
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyP') { togglePause(); return; }
-  if (e.code === 'KeyT') { toggleTheme(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -329,12 +303,30 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
-themeBtn.addEventListener('click', () => {
-  toggleTheme();
-  themeBtn.blur(); // evita que Space (caída) active el botón
+
+const themeToggle = document.getElementById('theme-toggle');
+const toggleIcon = themeToggle.querySelector('.toggle-icon');
+const toggleLabel = themeToggle.querySelector('.toggle-label');
+
+function applyTheme(isLight) {
+  if (isLight) {
+    document.body.classList.add('light-mode');
+    toggleIcon.textContent = '☀';
+    toggleLabel.textContent = 'DARK';
+  } else {
+    document.body.classList.remove('light-mode');
+    toggleIcon.textContent = '☾';
+    toggleLabel.textContent = 'LIGHT';
+  }
+}
+
+const savedTheme = localStorage.getItem('tetris-theme');
+applyTheme(savedTheme === 'light');
+
+themeToggle.addEventListener('click', () => {
+  const isLight = !document.body.classList.contains('light-mode');
+  applyTheme(isLight);
+  localStorage.setItem('tetris-theme', isLight ? 'light' : 'dark');
 });
 
-let savedTheme = null;
-try { savedTheme = localStorage.getItem('theme'); } catch (e) {}
-applyTheme(savedTheme === 'light' ? 'light' : 'dark');
 init();

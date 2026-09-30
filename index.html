@@ -7,10 +7,12 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema (T)">☀</button>
-  <h1 class="title">TETRIS</h1>
-
   <div class="wrapper">
+    <button id="theme-toggle" class="theme-toggle">
+      <span class="toggle-icon">&#9790;</span>
+      <span class="toggle-label">LIGHT</span>
+    </button>
+    <h1 class="game-title">TETRIS</h1>
     <div class="game-container">
       <canvas id="board" width="300" height="600"></canvas>
 
@@ -41,7 +43,6 @@
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
             <li><kbd>P</kbd> pausa</li>
-            <li><kbd>T</kbd> tema</li>
           </ul>
         </div>
       </aside>
