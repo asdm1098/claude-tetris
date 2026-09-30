@@ -20,4 +20,5 @@ Three files, all logic in `game.js` (single script, global state, no modules):
 - Piece lifecycle: `lockPiece()` = `merge()` → `clearLines()` → `spawn()`. `spawn()` calls `endGame()` if the new piece collides.
 - Canvas size is hardcoded in `index.html` (`300×600` = `COLS×BLOCK` × `ROWS×BLOCK`); changing `COLS`/`ROWS`/`BLOCK` requires updating it. `next-canvas` is 120×120 (4×4 cells at 30px).
 - Rotation: `rotateCW` + simple horizontal kick list `[0,-1,1,-2,2]` in `tryRotate` (not SRS).
+- Records (`// ---- Records ----` in `game.js`): `localStorage['tetris-records']` = `{top:[{name,score}×5], bestCombo, maxLines}`. The overlay doubles as start screen (game waits for "Jugar"; `gameOver=true` until `init()`). `endGame()` → `recordsOnGameOver()` updates bests, shows name form if score qualifies. Combo = consecutive locks clearing ≥1 line (`combo`/`maxCombo`, reset in `init()`). Keydown ignores events from `INPUT`. Extra ids: `records-*`.
 - Scoring: `LINE_SCORES × level`; soft drop +1/cell, hard drop +2/cell. Level = `floor(lines/10)+1`; `dropInterval = max(100, 1000-(level-1)*90)`.

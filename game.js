@@ -55,6 +55,7 @@ const themeBtn = document.getElementById('theme-toggle');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let theme = 'dark', gridColor;
+let combo = 0, maxCombo = 0;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -118,11 +119,15 @@ function clearLines() {
     }
   }
   if (cleared) {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
+  } else {
+    combo = 0;
   }
 }
 
@@ -252,6 +257,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  recordsOnGameOver();
 }
 
 function togglePause() {
@@ -280,6 +286,7 @@ function loop(ts) {
       lockPiece();
     }
   }
+  if (gameOver) return; // endGame() ocurrió durante este frame
   draw();
   animId = requestAnimationFrame(loop);
 }
@@ -293,16 +300,21 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  combo = 0;
+  maxCombo = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  recordsHide();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  // escribiendo el nombre (records): no disparar acciones de juego
+  if (e.target && e.target.tagName === 'INPUT') return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (e.code === 'KeyT') { toggleTheme(); return; }
   if (paused || gameOver) return;
@@ -328,7 +340,11 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => {
+  init();
+  restartBtn.textContent = 'Reiniciar';
+  restartBtn.blur(); // evita que Space (caída) reactive el botón
+});
 themeBtn.addEventListener('click', () => {
   toggleTheme();
   themeBtn.blur(); // evita que Space (caída) active el botón
@@ -337,4 +353,110 @@ themeBtn.addEventListener('click', () => {
 let savedTheme = null;
 try { savedTheme = localStorage.getItem('theme'); } catch (e) {}
 applyTheme(savedTheme === 'light' ? 'light' : 'dark');
-init();
+
+// ---- Records ----
+const RECORDS_KEY = 'tetris-records';
+const RECORDS_TOP = 5;
+const recordsSection = document.getElementById('records-section');
+const recordsForm = document.getElementById('records-form');
+const recordsName = document.getElementById('records-name');
+const recordsList = document.getElementById('records-list');
+const recordsStats = document.getElementById('records-stats');
+const recordsReset = document.getElementById('records-reset');
+let records = loadRecords();
+let pendingScore = null; // puntuación que califica y aún no se guardó
+
+function loadRecords() {
+  const empty = { top: [], bestCombo: 0, maxLines: 0 };
+  try {
+    const d = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (!d || !Array.isArray(d.top)) return empty;
+    return {
+      top: d.top
+        .filter(e => e && Number.isFinite(e.score))
+        .map(e => ({ name: String(e.name ?? '').slice(0, 12), score: e.score }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, RECORDS_TOP),
+      bestCombo: Number(d.bestCombo) || 0,
+      maxLines: Number(d.maxLines) || 0,
+    };
+  } catch (e) {
+    return empty;
+  }
+}
+
+function saveRecords() {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(records)); } catch (e) {}
+}
+
+function qualifies(s) {
+  return s > 0 && (records.top.length < RECORDS_TOP || s > records.top[records.top.length - 1].score);
+}
+
+// highlightIdx: fila a resaltar (-1 = ninguna)
+function renderRecords(highlightIdx = -1) {
+  recordsList.replaceChildren();
+  for (let i = 0; i < RECORDS_TOP; i++) {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    const pts = document.createElement('span');
+    const entry = records.top[i];
+    name.textContent = `${i + 1}. ${entry ? entry.name : '---'}`;
+    pts.textContent = entry ? entry.score.toLocaleString() : '';
+    if (!entry) li.className = 'empty';
+    if (i === highlightIdx) li.className = 'highlight';
+    li.append(name, pts);
+    recordsList.append(li);
+  }
+  recordsStats.textContent = `Mejor combo: ${records.bestCombo} · Líneas máx: ${records.maxLines}`;
+  recordsSection.classList.remove('hidden');
+}
+
+function recordsHide() {
+  pendingScore = null;
+  recordsSection.classList.add('hidden');
+  recordsForm.classList.add('hidden');
+}
+
+function recordsOnGameOver() {
+  if (maxCombo > records.bestCombo) records.bestCombo = maxCombo;
+  if (lines > records.maxLines) records.maxLines = lines;
+  saveRecords();
+  renderRecords();
+  if (qualifies(score)) {
+    pendingScore = score;
+    recordsName.value = '';
+    recordsForm.classList.remove('hidden');
+    recordsName.focus();
+  }
+}
+
+recordsForm.addEventListener('submit', e => {
+  e.preventDefault();
+  if (pendingScore === null) return;
+  const name = recordsName.value.trim().slice(0, 12) || 'Anónimo';
+  const entry = { name, score: pendingScore };
+  records.top.push(entry);
+  records.top.sort((a, b) => b.score - a.score); // estable: empate queda tras el anterior
+  records.top = records.top.slice(0, RECORDS_TOP);
+  const idx = records.top.lastIndexOf(entry);
+  pendingScore = null;
+  saveRecords();
+  recordsForm.classList.add('hidden');
+  renderRecords(idx);
+  restartBtn.focus();
+});
+
+recordsReset.addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los records?')) return;
+  records = { top: [], bestCombo: 0, maxLines: 0 };
+  saveRecords();
+  renderRecords();
+  recordsReset.blur();
+});
+
+// Pantalla de inicio: el juego arranca al pulsar "Jugar"
+gameOver = true; // bloquea teclas/pausa hasta iniciar
+overlayTitle.textContent = 'TETRIS';
+overlayScore.textContent = '';
+renderRecords();
