@@ -171,7 +171,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid-line').trim();
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -310,21 +310,22 @@ const toggleLabel = themeToggle.querySelector('.toggle-label');
 
 function applyTheme(isLight) {
   if (isLight) {
-    document.body.classList.add('light-mode');
+    document.documentElement.setAttribute('data-theme', 'light');
     toggleIcon.textContent = '☀';
     toggleLabel.textContent = 'DARK';
   } else {
-    document.body.classList.remove('light-mode');
+    document.documentElement.removeAttribute('data-theme');
     toggleIcon.textContent = '☾';
     toggleLabel.textContent = 'LIGHT';
   }
+  if (typeof current !== 'undefined' && current) draw();
 }
 
 const savedTheme = localStorage.getItem('tetris-theme');
 applyTheme(savedTheme === 'light');
 
 themeToggle.addEventListener('click', () => {
-  const isLight = !document.body.classList.contains('light-mode');
+  const isLight = document.documentElement.getAttribute('data-theme') !== 'light';
   applyTheme(isLight);
   localStorage.setItem('tetris-theme', isLight ? 'light' : 'dark');
 });
